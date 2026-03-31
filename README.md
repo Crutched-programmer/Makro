@@ -4,13 +4,11 @@ A high-level, visual firmware generator for custom HID peripherals. Design your 
 
 ---
 
-<h3>Change log:<br>
-- Added drag-and-drop grid system for physical component placement<br>
-- Integrated real-time GPIO validation to prevent pin conflicts<br>
-- Added "Intent-based" configuration to describe logic in plain English<br>
-- Support for multiple firmware backends (QMK, KMK, Arduino)<br>
-- Built-in SVG preview for all components including OLEDs and Encoders<br>
-</h3>
+<h3>Change log:<br></h3>
+- Changed the grid size for big components (like the OLED) to be a multiple of the grid units. (buttons are a 1x1 unit but an oled is a 2x2 grid unit.)
+- Refined the colours for a more cleaner interface.
+- Added a new tab interface which splits the messy screen into three functional sections to ease the process of the code generation
+- Updated the js.puter.com call function. 
 
 ---
 
@@ -35,7 +33,7 @@ Creating a custom macropad is often more difficult than the physical assembly su
 | **Design System** | Custom CSS Grid / Flexbox with Syne & DM Mono typography |
 | **Icons & Assets** | Optimized Inline SVGs for zero-latency component rendering |
 | **Runtime** | Web-standard Browser Environment (works offline once loaded) |
-| **Integrations** | js.puter.com for cloud-native workspace features |
+| **Integrations** | js.puter.com for AI powered code enhancement ( still buggy ) |
 
 ---
 
