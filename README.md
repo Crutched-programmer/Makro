@@ -69,3 +69,6 @@ git clone [https://github.com/your-username/makro.git](https://github.com/your-u
 # Open the tool
 cd makro
 open Makro.html
+
+```
+<p>Please note that this project is done with inspiration from app.musiconerd.com . This is is a drag and drop interface for building a MIDI controller. I took up this project as a simple challenge. I have no intentions to replicate or reproduce the interface.</p>
