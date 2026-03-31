@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>makro — HID Macropad Builder</title>
+<script src="https://js.puter.com/v2/"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Syne:wght@700;800&display=swap');
+
+:root {
+  --bg:   #1a1a1a;
+  --bg2:  #111111;
+  --bg3:  #0a0a0a;
+  --bg4:  #2a2a2a;
+  --bdr:  #ffffff;
+  --bdr2: #555555;
+  --tx:   #e0e0e0;
+  --tx2:  #aaaaaa;
+  --tx3:  #888888;
+  --ac:   #bd0032;
+  --ac2:  #a3002b;
+  --blue: #5599ff;
+  --red:  #ff1a4d;
+  --grn:  #44ee88;
+  --pur:  #bb88ff;
+  --amb:  #ff8833;
+  --f:    'DM Mono', monospace;
+  --fh:   'Syne', sans-serif;
+  --cell: 72px;
+  --sb:   210px;
+  --cp:   400px;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100%; background:var(--bg); color:var(--tx); font-family:var(--f); font-size:12px; overflow:hidden; }
+
+/* ── TOPBAR ── */
+#topbar {
+  height:44px; display:flex; align-items:center; padding:0 16px; gap:12px;
+  border-bottom:1px solid var(--bdr); background:var(--bg); flex-shrink:0;
+}
+#logo { font-family:var(--fh); font-size:17px; font-weight:800; color:var(--ac); letter-spacing:-0.5px; white-space:nowrap; }
+#logo sub { color:var(--tx3); font-size:10px; font-family:var(--f); font-weight:400; letter-spacing:1px; }
+.tb-div { width:1px; height:18px; background:var(--bdr2); flex-shrink:0; }
+
+.tb-group { display:flex; align-items:center; gap:7px; }
+.tb-lbl { font-size:9px; color:var(--tx3); letter-spacing:2px; text-transform:uppercase; white-space:nowrap; }
+
+select.tb-sel {
+  background:var(--bg3); border:1px solid var(--bdr2); color:var(--tx);
+  font-family:var(--f); font-size:11px; padding:4px 8px; border-radius:4px;
+  cursor:pointer; outline:none;
+}
+select.tb-sel:focus { border-color:var(--ac); }
+select.tb-sel option { background:var(--bg2); }
+
+#gpio-group { display:flex; align-items:center; gap:7px; flex:1; max-width:260px; }
+#gpio-track { flex:1; height:5px; background:var(--bg4); border-radius:3px; overflow:hidden; border:1px solid var(--bdr); }
+#gpio-fill { height:100%; border-radius:3px; background:var(--grn); transition:width .3s, background .3s; }
+#gpio-lbl { font-size:10px; color:var(--tx2); white-space:nowrap; min-width:68px; }
+
+#tb-right { margin-left:auto; display:flex; align-items:center; gap:8px; }
+.tb-btn {
+  padding:5px 12px; border-radius:4px; font-family:var(--f); font-size:10px; font-weight:500;
+  border:1px solid var(--bdr2); background:var(--bg3); color:var(--tx2);
+  cursor:pointer; transition:all .13s; letter-spacing:.5px; white-space:nowrap;
+}
+.tb-btn:hover { border-color:var(--ac); color:var(--ac); }
+.tb-btn.primary { background:var(--ac); color:#000; border-color:var(--ac); font-weight:700; }
+.tb-btn.primary:hover { background:var(--ac2); border-color:var(--ac2); }
+.tb-btn.primary:disabled { opacity:.4; cursor:default; }
+.spin-ico { display:none; }
+.loading .spin-ico { display:inline; animation:spin .7s linear infinite; }
+.loading .lbl-ico { display:none; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── SHELL ── */
+#shell { display:flex; flex-direction:column; height:calc(100vh - 44px - 38px); overflow:hidden; }
+
+/* pages fill shell */
+.main-page { display:none; flex:1; overflow:hidden; }
+.main-page.active { display:flex; }
+#page-structure { flex-direction:row; }
+
+/* code panel full width in its page */
+#page-code #code-panel { width:100%; flex:1; }
+
+/* ── LEFT SIDEBAR (components + grid controls only) ── */
+#sidebar {
+  width:200px; flex-shrink:0;
+  background:var(--bg2); border-right:1px solid var(--bdr);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.sb-hdr { padding:8px 12px 6px; border-bottom:1px solid var(--bdr); flex-shrink:0; }
+.sb-hdr-txt { font-size:9px; letter-spacing:3px; color:var(--tx3); text-transform:uppercase; }
+.sb-body { flex:1; overflow-y:auto; padding:6px 8px; scrollbar-width:thin; scrollbar-color:var(--bdr2) transparent; }
+
+/* palette items */
+.pal-item {
+  display:flex; align-items:center; gap:8px; padding:7px 8px; border-radius:5px;
+  border:1px solid var(--bdr); background:var(--bg3); cursor:grab; margin-bottom:4px;
+  transition:all .12s; user-select:none;
+}
+.pal-item:hover { border-color:var(--ac); }
+.pal-item:active { cursor:grabbing; opacity:.6; }
+.pal-ico { width:26px; height:26px; border-radius:4px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.pal-name { font-size:10px; font-weight:500; color:var(--tx); }
+.pal-cost { font-size:9px; color:var(--tx3); margin-top:1px; }
+
+/* grid controls */
+.gc-row { display:flex; align-items:center; gap:6px; padding:8px 12px; }
+.gc-inp {
+  width:40px; background:var(--bg3); border:1px solid var(--bdr2); color:var(--tx);
+  font-family:var(--f); font-size:11px; padding:3px 5px; border-radius:3px;
+  text-align:center; outline:none;
+}
+.gc-inp:focus { border-color:var(--ac); }
+.gc-lbl { font-size:10px; color:var(--tx2); }
+.gc-btn { padding:3px 9px; border-radius:3px; font-family:var(--f); font-size:9px; border:1px solid var(--bdr2); background:var(--bg3); color:var(--tx2); cursor:pointer; transition:all .12s; letter-spacing:.5px; }
+.gc-btn:hover { border-color:var(--red); color:var(--red); }
+
+/* ── RIGHT PROPS PANEL ── */
+#props-panel {
+  width:240px; flex-shrink:0;
+  background:var(--bg2); border-left:1px solid var(--bdr);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+#props-panel .sb-hdr { flex-shrink:0; }
+#props {
+  flex:1; overflow-y:auto; padding:10px;
+  scrollbar-width:thin; scrollbar-color:var(--bdr2) transparent;
+}
+.props-empty { font-size:10px; color:var(--tx3); text-align:center; padding:24px 8px; line-height:2; }
+.prop-group-hdr { font-size:8px; letter-spacing:3px; color:var(--tx3); text-transform:uppercase; margin-bottom:7px; padding-bottom:4px; border-bottom:1px solid var(--bdr); }
+.prop-row { margin-bottom:8px; }
+.prop-lbl { font-size:9px; color:var(--tx2); letter-spacing:1px; margin-bottom:3px; text-transform:uppercase; }
+.prop-inp, .prop-sel {
+  width:100%; background:var(--bg3); border:1px solid var(--bdr2); color:var(--tx);
+  font-family:var(--f); font-size:11px; padding:4px 7px; border-radius:3px; outline:none;
+  transition:border-color .12s;
+}
+.prop-inp:focus, .prop-sel:focus { border-color:var(--ac); }
+.prop-sel option { background:var(--bg2); }
+.prop-textarea {
+  width:100%; background:var(--bg3); border:1px solid var(--bdr2); color:var(--tx);
+  font-family:var(--f); font-size:11px; padding:5px 7px; border-radius:3px; outline:none;
+  resize:vertical; min-height:60px; line-height:1.6; transition:border-color .12s;
+}
+.prop-textarea:focus { border-color:var(--ac); }
+.prop-textarea::placeholder { color:var(--tx3); }
+.prop-del { width:100%; margin-top:10px; padding:5px; border-radius:3px; font-family:var(--f); font-size:10px; border:1px solid rgba(255,68,85,.3); background:rgba(255,68,85,.06); color:var(--red); cursor:pointer; transition:all .12s; }
+.prop-del:hover { background:rgba(255,68,85,.15); }
+
+/* ── CENTRE ── */
+#centre { flex:1; display:flex; flex-direction:column; overflow:hidden; background:var(--bg); }
+
+/* canvas — fills centre, no intent panel below anymore */
+#canvas-wrap {
+  flex:1; overflow:auto;
+  display:flex; align-items:flex-start; justify-content:center;
+  padding:28px;
+  background-image: radial-gradient(circle, #2a2a2a 1px, transparent 1px);
+  background-size:22px 22px;
+  scrollbar-width:thin; scrollbar-color:var(--bdr2) transparent;
+}
+#grid {
+  display:inline-grid; gap:5px;
+  background:var(--bg2); border:1px solid var(--bdr2); border-radius:10px;
+  padding:14px; box-shadow:0 8px 40px rgba(0,0,0,.6);
+}
+
+/* cells — no fixed size on the element itself so spanning works via grid */
+.cell {
+  width:var(--cell); height:var(--cell);
+  border:1.5px dashed var(--bdr2); border-radius:6px;
+  position:relative; transition:border-color .12s, background .12s;
+  display:flex; align-items:center; justify-content:center;
+  overflow:visible; /* allow .pc to span visually if needed */
+}
+.cell.hover { border-color:var(--ac); background:rgba(189,0,50,.06); }
+.cell.taken { border-style:solid; border-color:transparent; /* tile covers it */ }
+
+/* placed component tile — fills the cell(s) it spans */
+.pc {
+  position:absolute; inset:3px; border-radius:5px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:4px; cursor:pointer; transition:filter .12s; overflow:hidden;
+  z-index:2;
+}
+.pc:hover { filter:brightness(1.18); }
+.pc.sel { outline:2px solid var(--ac); outline-offset:2px; }
+.pc svg { flex-shrink:0; }
+.pc-lbl { font-size:8px; font-weight:500; color:rgba(255,255,255,.7); letter-spacing:.5px; max-width:calc(100% - 8px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center; }
+.pc-del { position:absolute; top:3px; right:3px; width:14px; height:14px; border-radius:2px; font-size:9px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:transparent; background:transparent; transition:all .12s; z-index:3; }
+.pc:hover .pc-del { background:rgba(255,68,85,.3); color:var(--red); }
+
+/* ── CODE PANEL ── */
+#code-panel {
+  width:var(--cp); flex-shrink:0;
+  background:var(--bg2); border-left:1px solid var(--bdr);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+#code-topbar {
+  display:flex; align-items:center; gap:8px; padding:8px 12px;
+  border-bottom:1px solid var(--bdr); flex-shrink:0;
+}
+#code-topbar-title { font-size:9px; letter-spacing:3px; color:var(--tx3); text-transform:uppercase; flex:1; }
+select#fw-sel { background:var(--bg3); border:1px solid var(--bdr2); color:var(--tx); font-family:var(--f); font-size:10px; padding:4px 7px; border-radius:3px; cursor:pointer; outline:none; }
+select#fw-sel:focus { border-color:var(--ac); }
+select#fw-sel option { background:var(--bg2); }
+#code-tabs { display:flex; border-bottom:1px solid var(--bdr); flex-shrink:0; }
+.ctab { padding:7px 14px; font-size:10px; color:var(--tx3); cursor:pointer; border-bottom:2px solid transparent; transition:all .12s; letter-spacing:.5px; }
+.ctab.active { color:var(--ac); border-bottom-color:var(--ac); }
+#code-body { flex:1; overflow:hidden; position:relative; }
+#code-out {
+  width:100%; height:100%; background:transparent; border:none; outline:none; resize:none;
+  color:#abb2bf; font-family:'DM Mono', monospace; font-size:11px;
+  line-height:1.72; padding:12px 14px;
+  scrollbar-width:thin; scrollbar-color:var(--bdr2) transparent;
+}
+#code-footer {
+  padding:7px 12px; border-top:1px solid var(--bdr);
+  display:flex; align-items:center; gap:8px; flex-shrink:0;
+}
+.code-ft-btn { padding:4px 10px; border-radius:3px; font-family:var(--f); font-size:9px; border:1px solid var(--bdr2); background:var(--bg3); color:var(--tx2); cursor:pointer; transition:all .12s; letter-spacing:.5px; }
+.code-ft-btn:hover { border-color:var(--grn); color:var(--grn); }
+#code-status { font-size:9px; color:var(--tx3); margin-left:auto; }
+
+/* ── TOAST ── */
+#toast { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:var(--bg3); border:1px solid var(--bdr2); border-radius:5px; padding:7px 16px; font-size:11px; color:var(--tx); z-index:9999; opacity:0; transition:opacity .2s; pointer-events:none; white-space:nowrap; }
+#toast.show { opacity:1; }
+
+/* ── MAIN TABS ── */
+#main-tabs {
+  display:flex; align-items:flex-end; gap:0;
+  border-bottom:1px solid var(--bdr); background:var(--bg2);
+  flex-shrink:0; padding:0 16px;
+}
+.main-tab {
+  padding:9px 18px 8px; font-size:10px; font-weight:500; letter-spacing:2px;
+  text-transform:uppercase; color:var(--tx3); cursor:pointer;
+  border-bottom:2px solid transparent; margin-bottom:-1px;
+  transition:color .13s, border-color .13s; font-family:var(--f);
+  background:none; border-top:none; border-left:none; border-right:none;
+}
+.main-tab:hover { color:var(--tx); }
+.main-tab.active { color:var(--ac); border-bottom-color:var(--ac); }
+
+::-webkit-scrollbar { width:4px; height:4px; }
+::-webkit-scrollbar-thumb { background:var(--bdr2); border-radius:2px; }
+</style>
+</head>
+<body>
+<div id="toast"></div>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <div id="logo">makro <sub>HID</sub></div>
+  <div class="tb-div"></div>
+  <div class="tb-group">
+    <span class="tb-lbl">MCU</span>
+    <select class="tb-sel" id="mcu-sel">
+      <option value="promicro">Pro Micro (ATmega32U4)</option>
+      <option value="elitec">Elite-C (ATmega32U4)</option>
+      <option value="rp2040">RP2040 / Pi Pico</option>
+      <option value="teensy2">Teensy 2.0</option>
+      <option value="stm32">STM32F103 Blue Pill</option>
+      <option value="nano">Arduino Nano (328P)</option>
+    </select>
+  </div>
+  <div class="tb-div"></div>
+  <div id="gpio-group" class="tb-group" style="flex:1;max-width:240px">
+    <span class="tb-lbl">GPIO</span>
+    <div id="gpio-track"><div id="gpio-fill" style="width:0%"></div></div>
+    <div id="gpio-lbl">0 / 18 pins</div>
+  </div>
+  <div id="tb-right">
+    <button class="tb-btn" id="btn-clear">Clear</button>
+    <button class="tb-btn primary" id="btn-ai">
+      <svg class="spin-ico" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+      <span class="lbl-ico">✦ AI Enhance</span>
+    </button>
+  </div>
+</div>
+
+<!-- MAIN TAB BAR -->
+<div id="main-tabs">
+  <button class="main-tab active" data-page="page-structure">Structure</button>
+  <button class="main-tab" data-page="page-working">Working</button>
+  <button class="main-tab" data-page="page-code">Code</button>
+</div>
+
+<!-- SHELL -->
+<div id="shell">
+
+  <!-- PAGE: STRUCTURE -->
+  <div class="main-page active" id="page-structure">
+
+    <!-- LEFT: Components + grid size controls -->
+    <div id="sidebar">
+      <div class="sb-hdr"><div class="sb-hdr-txt">Components</div></div>
+      <div class="sb-body" id="pal-body"></div>
+      <div style="border-top:1px solid var(--bdr); flex-shrink:0;">
+        <div class="gc-row" style="flex-wrap:wrap;gap:5px;padding:8px 10px">
+          <span class="gc-lbl">Cols</span>
+          <input class="gc-inp" id="inp-cols" type="number" min="1" max="16" value="4">
+          <span class="gc-lbl">Rows</span>
+          <input class="gc-inp" id="inp-rows" type="number" min="1" max="10" value="3">
+          <button class="gc-btn" id="btn-apply" style="margin-left:auto">Apply</button>
+          <button class="gc-btn" id="btn-clear2" style="border-color:rgba(255,68,85,.3);color:var(--red)">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTRE: Grid canvas only -->
+    <div id="centre">
+      <div id="canvas-wrap">
+        <div id="grid"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Properties + Intent merged -->
+    <div id="props-panel">
+      <div class="sb-hdr"><div class="sb-hdr-txt">Properties</div></div>
+      <div id="props">
+        <div class="props-empty">Click any component<br>on the grid to<br>edit its properties</div>
+      </div>
+    </div>
+
+  </div><!-- end page-structure -->
+
+  <!-- PAGE: WORKING -->
+  <div class="main-page" id="page-working">
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);">
+      <div style="flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:28px;background-image:radial-gradient(circle,#2a2a2a 1px,transparent 1px);background-size:22px 22px;scrollbar-width:thin;scrollbar-color:var(--bdr2) transparent;">
+        <div id="grid-w" style="display:inline-grid;gap:5px;background:var(--bg2);border:1px solid var(--bdr2);border-radius:10px;padding:14px;box-shadow:0 8px 40px rgba(0,0,0,.6);"></div>
+      </div>
+      <div style="border-top:1px solid var(--bdr);background:var(--bg2);flex-shrink:0;overflow-y:auto;max-height:240px;scrollbar-width:thin;scrollbar-color:var(--bdr2) transparent;">
+        <div style="padding:6px 14px 4px;font-size:9px;letter-spacing:3px;color:var(--tx3);text-transform:uppercase;border-bottom:1px solid var(--bdr);">▸ Component Intent — describe what each component should do</div>
+        <div id="intent-rows"></div>
+      </div>
+    </div>
+  </div><!-- end page-working -->
+
+  <!-- PAGE: CODE -->
+  <div class="main-page" id="page-code">
+    <div id="code-panel">
+      <div id="code-topbar">
+        <div id="code-topbar-title">Firmware</div>
+        <select id="fw-sel">
+          <option value="arduino_hid">Arduino HID (32U4)</option>
+          <option value="arduino_kmk">CircuitPython / KMK</option>
+          <option value="qmk">QMK (config.h)</option>
+          <option value="zmk">ZMK (devicetree)</option>
+        </select>
+      </div>
+      <div id="code-tabs">
+        <div class="ctab active" data-tab="main">main.ino</div>
+        <div class="ctab" data-tab="pins">pins</div>
+        <div class="ctab" data-tab="readme">readme</div>
+      </div>
+      <div id="code-body">
+        <textarea id="code-out" spellcheck="false" readonly></textarea>
+      </div>
+      <div id="code-footer">
+        <button class="code-ft-btn" id="btn-copy">Copy</button>
+        <button class="code-ft-btn" id="btn-dl">Download</button>
+        <div id="code-status">Ready</div>
+      </div>
+    </div>
+  </div><!-- end page-code -->
+
+</div><!-- end shell -->
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+
+// ══════════════════════════════════════
+// MCU DATA
+// ══════════════════════════════════════
+const MCUS = {
+  promicro: { label:'Pro Micro',  gpios:18, pins:['D0','D1','D2','D3','D4','D5','D6','D7','B0','B1','B2','B3','B4','B5','B6','C6','C7','F7'], analog:['F7','F6','F5','F4'], hid:'MIDIUSB / Keyboard.h' },
+  elitec:   { label:'Elite-C',    gpios:24, pins:['D0','D1','D2','D3','D4','D5','D6','D7','B0','B1','B2','B3','B4','B5','B6','C6','C7','F0','F1','F4','F5','F6','F7','E6'], analog:['F0','F1','F4','F5','F6','F7'], hid:'MIDIUSB / Keyboard.h' },
+  rp2040:   { label:'RP2040',     gpios:26, pins:Array.from({length:26},(_,i)=>`GP${i}`), analog:['GP26','GP27','GP28','GP29'], hid:'TinyUSB' },
+  teensy2:  { label:'Teensy 2.0', gpios:25, pins:['B0','B1','B2','B3','B4','B5','B6','B7','C6','C7','D0','D1','D2','D3','D4','D5','D6','D7','E0','E1','F0','F1','F4','F5','F6'], analog:['F0','F1','F4','F5','F6'], hid:'Keyboard.h / MIDI' },
+  stm32:    { label:'STM32F103',  gpios:32, pins:[...Array.from({length:12},(_,i)=>`PA${i}`),...Array.from({length:12},(_,i)=>`PB${i}`)], analog:['PA0','PA1','PA2','PA3','PA4','PA5','PA6','PA7'], hid:'USBComposite' },
+  nano:     { label:'Arduino Nano', gpios:14, pins:['D2','D3','D4','D5','D6','D7','D8','D9','D10','D11','D12','D13','A0','A1','A2','A3'], analog:['A0','A1','A2','A3','A4','A5'], hid:'No native HID — use Serial MIDI' },
+};
+
+// ══════════════════════════════════════
+// COMPONENT TYPES
+// ══════════════════════════════════════
+// Physical sizing: 1 cell = 13mm (tactile switch body)
+// cw = column span, rh = row span
+const COMPS = [
+  { type:'key',  name:'Key Switch',     cost:1, cw:1, rh:1, col:'#3a6e3a', svgCol:'#55dd77',
+    svg:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="12" cy="12" r="4"/></svg>`,
+    defaults:{ label:'KEY', pin:'', keycode:'KC_A', action:'keypress', note:'60', cc:'1', ch:'1' } },
+  { type:'enc',  name:'Encoder',        cost:2, cw:1, rh:1, col:'#3a4a7a', svgCol:'#6688ff',
+    svg:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="4" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="20"/><line x1="4" y1="12" x2="2" y2="12"/><line x1="22" y1="12" x2="20" y2="12"/></svg>`,
+    defaults:{ label:'ENC', pinA:'', pinB:'', btnPin:'', cwKey:'KC_VOLU', ccwKey:'KC_VOLD', clickKey:'KC_MUTE', action:'keypress', cc:'7', ch:'1' } },
+  { type:'pot',  name:'Potentiometer',  cost:1, cw:1, rh:1, col:'#3a5a6a', svgCol:'#44aacc',
+    svg:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/><line x1="5" y1="19" x2="7" y2="17"/><line x1="19" y1="19" x2="17" y2="17"/></svg>`,
+    defaults:{ label:'POT', pin:'', action:'cc', cc:'7', ch:'1', minVal:'0', maxVal:'127' } },
+  { type:'led',  name:'LED',            cost:1, cw:1, rh:1, col:'#6a3a3a', svgCol:'#ff7755',
+    svg:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="5"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.93" y1="4.93" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.07" y2="19.07"/><line x1="4.93" y1="19.07" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.07" y2="4.93"/></svg>`,
+    defaults:{ label:'LED', pin:'', mode:'static', color:'#ff0000', trigger:'always' } },
+  { type:'rgb',  name:'RGB / NeoPixel', cost:1, cw:1, rh:1, col:'#5a3a7a', svgCol:'#bb77ff',
+    svg:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+    defaults:{ label:'RGB', pin:'', count:'1', effect:'rainbow', brightness:'128' } },
+  // OLED 128×64 board ≈ 25×27mm → 2×2 cells (REFERENCE SIZE)
+  { type:'oled', name:'OLED 128×64',    cost:2, cw:2, rh:2, col:'#2e2e2e', svgCol:'#aaaaaa',
+    svg:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="6" y1="9" x2="18" y2="9"/><line x1="6" y1="12" x2="14" y2="12"/><line x1="6" y1="15" x2="11" y2="15"/></svg>`,
+    defaults:{ label:'OLED', sda:'', scl:'', size:'128x64', show:'layer' } },
+  // OLED 128×32 board ≈ 35×27mm → 3×2 cells (wider, same height)
+  { type:'oled32', name:'OLED 128×32',  cost:2, cw:3, rh:2, col:'#252535', svgCol:'#88cccc',
+    svg:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="7" width="22" height="10" rx="2"/><line x1="4" y1="11" x2="20" y2="11"/><line x1="4" y1="14" x2="15" y2="14"/></svg>`,
+    defaults:{ label:'OLED32', sda:'', scl:'', size:'128x32', show:'layer' } },
+  { type:'sw',   name:'Toggle Switch',  cost:1, cw:1, rh:1, col:'#6a3a5a', svgCol:'#ff66aa',
+    svg:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="8" width="22" height="8" rx="4"/><circle cx="16" cy="12" r="3"/></svg>`,
+    defaults:{ label:'SW', pin:'', onKey:'KC_F13', offKey:'KC_F14', action:'keypress' } },
+  { type:'buzz', name:'Buzzer',         cost:1, cw:1, rh:1, col:'#6a5a2a', svgCol:'#ffbb33',
+    svg:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`,
+    defaults:{ label:'BZR', pin:'', freq:'1000', duration:'50', trigger:'keypress' } },
+];
+
+// ══════════════════════════════════════
+// STATE
+// ══════════════════════════════════════
+let cols = 4, rows = 3;
+let placed = {};      // key "r,c" → { type, id, r, c, props, intent }
+let selKey = null;
+let dragType = null;
+let uid = 0;
+let selMCU = 'promicro';
+let activeTab = 'main';
+let intentMap = {}; // id → string
+
+// ══════════════════════════════════════
+// PALETTE
+// ══════════════════════════════════════
+function buildPalette() {
+  const body = $('pal-body');
+  body.innerHTML = '';
+  COMPS.forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'pal-item';
+    div.draggable = true;
+    div.dataset.type = c.type;
+    div.innerHTML = `
+      <div class="pal-ico" style="background:${c.col};color:${c.svgCol}">${c.svg}</div>
+      <div><div class="pal-name">${c.name}</div><div class="pal-cost">${c.cost} pin${c.cost>1?'s':''} · ${c.cw}×${c.rh}</div></div>`;
+    div.addEventListener('dragstart', e => { dragType = c.type; e.dataTransfer.effectAllowed = 'copy'; div.style.opacity='.45'; });
+    div.addEventListener('dragend',   () => { dragType = null; div.style.opacity=''; });
+    body.appendChild(div);
+  });
+}
+
+// ══════════════════════════════════════
+// GRID
+// ══════════════════════════════════════
+
+// Returns set of all "r,c" keys occupied by placed components (including shadow cells)
+function occupiedSet() {
+  const occ = new Set();
+  Object.values(placed).forEach(p => {
+    const def = COMPS.find(x => x.type === p.type);
+    const cw = def?.cw || 1, rh = def?.rh || 1;
+    for (let dr = 0; dr < rh; dr++)
+      for (let dc = 0; dc < cw; dc++)
+        occ.add(`${p.r + dr},${p.c + dc}`);
+  });
+  return occ;
+}
+
+// Check if dropping type at r,c would fit without overlap/overflow
+function canPlace(type, r, c) {
+  const def = COMPS.find(x => x.type === type);
+  const cw = def?.cw || 1, rh = def?.rh || 1;
+  if (r + rh > rows || c + cw > cols) return false;
+  const occ = occupiedSet();
+  for (let dr = 0; dr < rh; dr++)
+    for (let dc = 0; dc < cw; dc++)
+      if (occ.has(`${r + dr},${c + dc}`)) return false;
+  return true;
+}
+
+function buildGrid() {
+  const g = $('grid');
+  g.style.gridTemplateColumns = `repeat(${cols}, var(--cell))`;
+  g.style.gridTemplateRows    = `repeat(${rows}, var(--cell))`;
+  g.innerHTML = '';
+
+  const occ = occupiedSet();
+  // Track which cells are "origin" of a placed component
+  const origins = {};
+  Object.entries(placed).forEach(([k, p]) => { origins[k] = true; });
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const key = `${r},${c}`;
+      const isOrigin = !!placed[key];
+      const isShadow = occ.has(key) && !isOrigin;
+
+      const cell = document.createElement('div');
+      cell.className = 'cell' + (occ.has(key) ? ' taken' : '');
+      cell.dataset.key = key;
+      cell.style.gridColumn = `${c + 1}`;
+      cell.style.gridRow    = `${r + 1}`;
+
+      if (isOrigin) {
+        // Render the spanning placed component tile
+        renderPlaced(cell, key);
+      } else if (!isShadow) {
+        // Empty droppable cell
+        cell.addEventListener('dragover', e => {
+          e.preventDefault();
+          if (dragType && canPlace(dragType, r, c)) cell.classList.add('hover');
+        });
+        cell.addEventListener('dragleave', () => cell.classList.remove('hover'));
+        cell.addEventListener('drop', e => {
+          e.preventDefault(); cell.classList.remove('hover');
+          if (dragType && canPlace(dragType, r, c)) place(dragType, key, r, c);
+        });
+        cell.addEventListener('click', () => deselect());
+      }
+      // Shadow cells: no events, just occupied appearance
+
+      g.appendChild(cell);
+    }
+  }
+  updateGPIO();
+  regen();
+  refreshIntentSel();
+}
+
+function renderPlaced(cell, key) {
+  const p   = placed[key];
+  const def = COMPS.find(c => c.type === p.type);
+  const cw  = def?.cw || 1;
+  const rh  = def?.rh || 1;
+
+  // Make this cell span cw columns and rh rows in the CSS grid
+  cell.style.gridColumn = `${p.c + 1} / span ${cw}`;
+  cell.style.gridRow    = `${p.r + 1} / span ${rh}`;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'pc' + (selKey === key ? ' sel' : '');
+  wrap.style.background = def.col + 'aa';
+  wrap.style.border = `1.5px solid ${def.col}`;
+  wrap.style.color  = def.svgCol;
+  // Scale icon for larger tiles
+  const iconSize = Math.min(22 + (cw + rh - 2) * 8, 48);
+  const iconSvg  = def.svg.replace(/width="22" height="22"/g, `width="${iconSize}" height="${iconSize}"`);
+  wrap.innerHTML = `${iconSvg}<div class="pc-lbl">${p.props.label||def.name}</div><div class="pc-del" title="remove">✕</div>`;
+  wrap.querySelector('.pc-del').addEventListener('click', e => {
+    e.stopPropagation();
+    delete placed[key];
+    if (selKey === key) deselect();
+    buildGrid();
+  });
+  wrap.addEventListener('click', () => selectComp(key));
+  cell.appendChild(wrap);
+}
+
+function place(type, key, r, c) {
+  const def = COMPS.find(x => x.type === type);
+  placed[key] = { type, id: ++uid, r, c, props: { ...def.defaults }, intent: '' };
+  buildGrid();
+  selectComp(key);
+  toast(`${def.name} placed`);
+}
+
+// ══════════════════════════════════════
+// SELECTION + PROPS
+// ══════════════════════════════════════
+function selectComp(key) {
+  selKey = key;
+  buildGrid(); // re-render to show .sel ring
+  renderProps();
+}
+
+function deselect() {
+  selKey = null;
+  buildGrid();
+  $('props').innerHTML = '<div class="props-empty">Click any component<br>on the grid to<br>edit its properties</div>';
+}
+
+const PROP_DEFS = {
+  key:    [{ k:'label', l:'Label', t:'text' },{ k:'pin', l:'Pin', t:'pin' },{ k:'action', l:'Action', t:'sel', opts:['keypress','hid_media','hid_consumer','none'] },{ k:'keycode', l:'HID Keycode', t:'text', hint:'KC_A, KC_VOLU…' },{ k:'note', l:'MIDI Note', t:'number' },{ k:'cc', l:'MIDI CC', t:'number' },{ k:'ch', l:'MIDI Ch', t:'number' }],
+  enc:    [{ k:'label', l:'Label', t:'text' },{ k:'pinA', l:'Pin A', t:'pin' },{ k:'pinB', l:'Pin B', t:'pin' },{ k:'btnPin', l:'Button Pin', t:'pin' },{ k:'action', l:'Action', t:'sel', opts:['keypress','cc','none'] },{ k:'cwKey', l:'CW Key', t:'text' },{ k:'ccwKey', l:'CCW Key', t:'text' },{ k:'clickKey', l:'Click Key', t:'text' },{ k:'cc', l:'CC#', t:'number' },{ k:'ch', l:'Ch', t:'number' }],
+  pot:    [{ k:'label', l:'Label', t:'text' },{ k:'pin', l:'Analog Pin', t:'pin' },{ k:'action', l:'Action', t:'sel', opts:['cc','volume','brightness','scroll'] },{ k:'cc', l:'CC#', t:'number' },{ k:'ch', l:'Ch', t:'number' },{ k:'minVal', l:'Min', t:'number' },{ k:'maxVal', l:'Max', t:'number' }],
+  led:    [{ k:'label', l:'Label', t:'text' },{ k:'pin', l:'Pin', t:'pin' },{ k:'mode', l:'Mode', t:'sel', opts:['static','breathe','blink'] },{ k:'trigger', l:'Trigger', t:'sel', opts:['always','on_keypress','layer'] }],
+  rgb:    [{ k:'label', l:'Label', t:'text' },{ k:'pin', l:'Data Pin', t:'pin' },{ k:'count', l:'LED Count', t:'number' },{ k:'effect', l:'Effect', t:'sel', opts:['static','rainbow','breathe','chase','fire'] },{ k:'brightness', l:'Brightness', t:'number' }],
+  oled:   [{ k:'label', l:'Label', t:'text' },{ k:'sda', l:'SDA Pin', t:'pin' },{ k:'scl', l:'SCL Pin', t:'pin' },{ k:'size', l:'Size', t:'sel', opts:['128x64','128x32'] },{ k:'show', l:'Show', t:'sel', opts:['layer','wpm','logo','custom'] }],
+  oled32: [{ k:'label', l:'Label', t:'text' },{ k:'sda', l:'SDA Pin', t:'pin' },{ k:'scl', l:'SCL Pin', t:'pin' },{ k:'size', l:'Size', t:'sel', opts:['128x32','128x64'] },{ k:'show', l:'Show', t:'sel', opts:['layer','wpm','logo','custom'] }],
+  sw:     [{ k:'label', l:'Label', t:'text' },{ k:'pin', l:'Pin', t:'pin' },{ k:'onKey', l:'ON Keycode', t:'text' },{ k:'offKey', l:'OFF Keycode', t:'text' },{ k:'action', l:'Action', t:'sel', opts:['keypress','layer','none'] }],
+  buzz:   [{ k:'label', l:'Label', t:'text' },{ k:'pin', l:'Pin', t:'pin' },{ k:'freq', l:'Freq (Hz)', t:'number' },{ k:'duration', l:'Duration (ms)', t:'number' },{ k:'trigger', l:'Trigger', t:'sel', opts:['keypress','layer_change','startup'] }],
+};
+
+function renderProps() {
+  if (!selKey || !placed[selKey]) return;
+  const p      = placed[selKey];
+  const mcu    = MCUS[selMCU];
+  const def    = COMPS.find(c => c.type === p.type);
+  const fields = PROP_DEFS[p.type] || [];
+  const container = $('props');
+  container.innerHTML = '';
+
+  // Header
+  const hdr = document.createElement('div');
+  hdr.className = 'prop-group-hdr';
+  hdr.style.display = 'flex'; hdr.style.alignItems = 'center'; hdr.style.gap = '6px';
+  hdr.innerHTML = `<span style="color:${def.svgCol}">${def.svg.replace('width="22" height="22"','width="14" height="14"')}</span><span>${def.name}</span><span style="color:var(--tx3)">@ [${selKey}]</span>`;
+  container.appendChild(hdr);
+
+  // Config fields
+  const cfgHdr = document.createElement('div');
+  cfgHdr.className = 'prop-group-hdr'; cfgHdr.style.marginTop = '10px';
+  cfgHdr.textContent = 'Configuration';
+  container.appendChild(cfgHdr);
+
+  fields.forEach(fd => {
+    const row = document.createElement('div'); row.className = 'prop-row';
+    row.innerHTML = `<div class="prop-lbl">${fd.l}</div>`;
+    let inp;
+    if (fd.t === 'sel') {
+      inp = document.createElement('select'); inp.className = 'prop-sel';
+      (fd.opts||[]).forEach(o => { const opt=document.createElement('option'); opt.value=o; opt.textContent=o; if(p.props[fd.k]===o)opt.selected=true; inp.appendChild(opt); });
+    } else if (fd.t === 'pin') {
+      inp = document.createElement('select'); inp.className = 'prop-sel';
+      const none = document.createElement('option'); none.value=''; none.textContent='-- unassigned --'; inp.appendChild(none);
+      mcu.pins.forEach(pin => { const opt=document.createElement('option'); opt.value=pin; opt.textContent=pin; if(p.props[fd.k]===pin)opt.selected=true; inp.appendChild(opt); });
+    } else {
+      inp = document.createElement('input'); inp.className = 'prop-inp';
+      inp.type = fd.t||'text'; inp.value = p.props[fd.k]||'';
+      if (fd.hint) inp.placeholder = fd.hint;
+    }
+    inp.addEventListener('change', () => { p.props[fd.k]=inp.value; if(fd.k==='label')buildGrid(); else regen(); updateGPIO(); });
+    inp.addEventListener('input',  () => { p.props[fd.k]=inp.value; if(fd.k==='label')buildGrid(); });
+    row.appendChild(inp); container.appendChild(row);
+  });
+
+  // Intent section — merged in
+  const intHdr = document.createElement('div');
+  intHdr.className = 'prop-group-hdr'; intHdr.style.marginTop = '12px';
+  intHdr.textContent = 'Intent';
+  container.appendChild(intHdr);
+
+  const intRow = document.createElement('div'); intRow.className = 'prop-row';
+  intRow.innerHTML = `<div class="prop-lbl">What should this do?</div>`;
+  const ta = document.createElement('textarea');
+  ta.className = 'prop-textarea';
+  ta.value = p.intent || '';
+  ta.placeholder = 'Describe in plain English…\ne.g. Volume up on CW, mute on click';
+  ta.addEventListener('input', () => { p.intent = ta.value; });
+  intRow.appendChild(ta); container.appendChild(intRow);
+
+  // Remove button
+  const del = document.createElement('button'); del.className='prop-del'; del.textContent='✕ Remove Component';
+  del.addEventListener('click', () => { delete placed[selKey]; deselect(); buildGrid(); });
+  container.appendChild(del);
+}
+
+// ══════════════════════════════════════
+// GPIO BAR
+// ══════════════════════════════════════
+function updateGPIO() {
+  const mcu  = MCUS[selMCU];
+  const used = Object.values(placed).reduce((s, p) => s + (COMPS.find(c=>c.type===p.type)?.cost||0), 0);
+  const pct  = Math.min(used / mcu.gpios * 100, 100);
+  $('gpio-fill').style.width      = pct + '%';
+  $('gpio-fill').style.background = pct > 90 ? '#ff4455' : pct > 70 ? '#ffaa33' : '#44ee88';
+  $('gpio-lbl').textContent       = `${used} / ${mcu.gpios} pins`;
+}
+
+// ══════════════════════════════════════
+// INTENT — now handled inside renderProps
+// refreshIntentSel is kept as a no-op for compatibility
+// ══════════════════════════════════════
+function refreshIntentSel() { /* intent is now in the right props panel */ }
+
+
+// ══════════════════════════════════════
+// INSTANT CODE GENERATION
+// ══════════════════════════════════════
+const FW = {
+  arduino_hid: genArduinoHID,
+  arduino_kmk: genKMK,
+  qmk:         genQMK,
+  zmk:         genZMK,
+};
+
+function regen() {
+  const fw   = $('fw-sel').value;
+  const mcu  = MCUS[selMCU];
+  const tab  = activeTab;
+  const code = (FW[fw] || genArduinoHID)(mcu, tab);
+  $('code-out').value = code;
+  $('code-status').textContent = `${Object.keys(placed).length} components · live`;
+}
+
+function getPlaced() { return Object.values(placed); }
+
+// ── Arduino HID ──────────────────────────────────────────────────────────────
+function genArduinoHID(mcu, tab) {
+  const items = getPlaced();
+  const keys  = items.filter(p => p.type === 'key');
+  const encs  = items.filter(p => p.type === 'enc');
+  const pots  = items.filter(p => p.type === 'pot');
+  const leds  = items.filter(p => p.type === 'led');
+  const rgbs  = items.filter(p => p.type === 'rgb');
+  const oleds = items.filter(p => p.type === 'oled');
+  const buzzs = items.filter(p => p.type === 'buzz');
+  const sws   = items.filter(p => p.type === 'sw');
+
+  if (tab === 'pins') return genPinsTab(mcu);
+  if (tab === 'readme') return genReadme(mcu, 'Arduino HID');
+
+  const lines = [];
+  lines.push(`// ═══════════════════════════════════════════════════`);
+  lines.push(`// PADFORGE — Generated Arduino HID Firmware`);
+  lines.push(`// MCU: ${mcu.label}  |  Generated: ${new Date().toLocaleDateString()}`);
+  lines.push(`// ═══════════════════════════════════════════════════`);
+  lines.push(``);
+
+  // Includes
+  lines.push(`#include <Keyboard.h>`);
+  if (keys.some(k=>k.props.action==='hid_media') || encs.length)
+    lines.push(`#include <HID-Project.h>  // https://github.com/NicoHood/HID`);
+  if (pots.length || items.some(i=>i.type==='pot'))
+    lines.push(`// Potentiometer — no extra library needed`);
+  if (rgbs.length)
+    lines.push(`#include <Adafruit_NeoPixel.h>`);
+  if (oleds.length)
+    lines.push(`#include <Wire.h>\n#include <Adafruit_SSD1306.h>`);
+  lines.push(``);
+
+  // Pin defines
+  lines.push(`// ── Pin Definitions ──────────────────────────────`);
+  keys.forEach((k,i) =>  lines.push(`#define BTN_${k.props.label.replace(/\s/g,'_').toUpperCase()}_PIN  ${k.props.pin||'/* assign */'}`));
+  encs.forEach((e,i) =>  { lines.push(`#define ENC_${i}_A  ${e.props.pinA||'/* assign */'}`) ; lines.push(`#define ENC_${i}_B  ${e.props.pinB||'/* assign */'}`); if(e.props.btnPin) lines.push(`#define ENC_${i}_BTN  ${e.props.btnPin}`); });
+  pots.forEach((p,i) =>  lines.push(`#define POT_${i}_PIN  ${p.props.pin||'/* analog pin */'}`));
+  leds.forEach((l,i) =>  lines.push(`#define LED_${i}_PIN  ${l.props.pin||'/* assign */'}`));
+  rgbs.forEach((r,i) =>  lines.push(`#define RGB_${i}_PIN  ${r.props.pin||'/* assign */'}  // NeoPixel data`));
+  buzzs.forEach((b,i)=>  lines.push(`#define BUZZ_${i}_PIN ${b.props.pin||'/* assign */'}`));
+  sws.forEach((s,i) =>   lines.push(`#define SW_${i}_PIN   ${s.props.pin||'/* assign */'}`));
+  lines.push(``);
+
+  // Constants
+  lines.push(`// ── Constants ────────────────────────────────────`);
+  lines.push(`const int DEBOUNCE_MS = 20;`);
+  if (rgbs.length) rgbs.forEach((r,i) => lines.push(`#define RGB_${i}_COUNT  ${r.props.count||1}`));
+  lines.push(``);
+
+  // State arrays
+  if (keys.length || sws.length) {
+    lines.push(`// ── Button state ─────────────────────────────────`);
+    if (keys.length) {
+      lines.push(`const int BTN_PINS[] = { ${keys.map(k=>k.props.pin||'0').join(', ')} };`);
+      lines.push(`const char BTN_KEYS[] = { ${keys.map(k=>`'${k.props.keycode?.replace('KC_','').toLowerCase()||'a'}'`).join(', ')} };`);
+      lines.push(`bool btnState[${keys.length}] = {};`);
+      lines.push(`unsigned long btnTime[${keys.length}] = {};`);
+    }
+    lines.push(``);
+  }
+
+  // NeoPixel objects
+  if (rgbs.length) {
+    lines.push(`// ── NeoPixel objects ─────────────────────────────`);
+    rgbs.forEach((r,i) => lines.push(`Adafruit_NeoPixel strip${i}(RGB_${i}_COUNT, RGB_${i}_PIN, NEO_GRB + NEO_KHZ800);`));
+    lines.push(``);
+  }
+
+  // OLED objects
+  if (oleds.length) {
+    lines.push(`// ── OLED ─────────────────────────────────────────`);
+    oleds.forEach((o,i) => {
+      const [w,h] = (o.props.size||'128x32').split('x');
+      lines.push(`Adafruit_SSD1306 display${i}(${w}, ${h}, &Wire, -1);`);
+    });
+    lines.push(``);
+  }
+
+  // Encoder state
+  if (encs.length) {
+    lines.push(`// ── Encoder state ────────────────────────────────`);
+    encs.forEach((_,i) => lines.push(`int enc${i}Last = LOW;`));
+    lines.push(``);
+  }
+
+  // Pot state
+  if (pots.length) {
+    lines.push(`// ── Potentiometer state ──────────────────────────`);
+    pots.forEach((_,i) => lines.push(`int pot${i}Last = -1;`));
+    lines.push(``);
+  }
+
+  // setup()
+  lines.push(`// ═════════════════════════════════════════════════`);
+  lines.push(`void setup() {`);
+  lines.push(`  Keyboard.begin();`);
+  if (keys.some(k=>k.props.action==='hid_media')) lines.push(`  Consumer.begin();`);
+  lines.push(``);
+  lines.push(`  // Buttons`);
+  keys.forEach(k  => lines.push(`  pinMode(BTN_${k.props.label.replace(/\s/g,'_').toUpperCase()}_PIN, INPUT_PULLUP);`));
+  encs.forEach((_,i) => { lines.push(`  pinMode(ENC_${i}_A, INPUT_PULLUP);`); lines.push(`  pinMode(ENC_${i}_B, INPUT_PULLUP);`); });
+  leds.forEach((_,i) => lines.push(`  pinMode(LED_${i}_PIN, OUTPUT);`));
+  buzzs.forEach((_,i)=> lines.push(`  pinMode(BUZZ_${i}_PIN, OUTPUT);`));
+  sws.forEach((_,i) => lines.push(`  pinMode(SW_${i}_PIN, INPUT_PULLUP);`));
+  if (rgbs.length) { lines.push(``); rgbs.forEach((_,i) => lines.push(`  strip${i}.begin(); strip${i}.show();`)); }
+  if (oleds.length) {
+    lines.push(``);
+    oleds.forEach((o,i) => {
+      const [w,h] = (o.props.size||'128x32').split('x');
+      lines.push(`  display${i}.begin(SSD1306_SWITCHCAPVCC, 0x3C);`);
+      lines.push(`  display${i}.clearDisplay(); display${i}.display();`);
+    });
+  }
+  lines.push(`}`);
+  lines.push(``);
+
+  // loop()
+  lines.push(`// ═════════════════════════════════════════════════`);
+  lines.push(`void loop() {`);
+  if (keys.length) {
+    lines.push(`  handleButtons();`);
+  }
+  if (encs.length)  lines.push(`  handleEncoders();`);
+  if (pots.length)  lines.push(`  handlePots();`);
+  if (sws.length)   lines.push(`  handleSwitches();`);
+  if (leds.length)  lines.push(`  handleLEDs();`);
+  if (oleds.length) lines.push(`  handleOLED();`);
+  lines.push(`  delay(1);`);
+  lines.push(`}`);
+  lines.push(``);
+
+  // handleButtons
+  if (keys.length) {
+    lines.push(`// ── Buttons ──────────────────────────────────────`);
+    lines.push(`void handleButtons() {`);
+    lines.push(`  for (int i = 0; i < ${keys.length}; i++) {`);
+    lines.push(`    bool pressed = digitalRead(BTN_PINS[i]) == LOW;`);
+    lines.push(`    if (pressed && !btnState[i] && millis()-btnTime[i]>DEBOUNCE_MS) {`);
+    keys.forEach((k,i) => {
+      if (k.props.intent) lines.push(`      // Intent: ${k.props.intent}`);
+    });
+    lines.push(`      Keyboard.press(BTN_KEYS[i]);`);
+    lines.push(`      btnState[i] = true; btnTime[i] = millis();`);
+    lines.push(`    } else if (!pressed && btnState[i]) {`);
+    lines.push(`      Keyboard.release(BTN_KEYS[i]);`);
+    lines.push(`      btnState[i] = false;`);
+    lines.push(`    }`);
+    lines.push(`  }`);
+    lines.push(`}`);
+    lines.push(``);
+  }
+
+  // handleEncoders
+  if (encs.length) {
+    lines.push(`// ── Encoders ─────────────────────────────────────`);
+    lines.push(`void handleEncoders() {`);
+    encs.forEach((e,i) => {
+      const cw  = e.props.cwKey?.replace('KC_','') || 'MEDIA_VOLUME_UP';
+      const ccw = e.props.ccwKey?.replace('KC_','') || 'MEDIA_VOLUME_DOWN';
+      if (e.props.intent) lines.push(`  // Intent: ${e.props.intent}`);
+      lines.push(`  int enc${i}A = digitalRead(ENC_${i}_A);`);
+      lines.push(`  if (enc${i}A != enc${i}Last) {`);
+      lines.push(`    if (digitalRead(ENC_${i}_B) != enc${i}A) {`);
+      lines.push(`      Consumer.write(MEDIA_VOLUME_UP);   // CW  → ${cw}`);
+      lines.push(`    } else {`);
+      lines.push(`      Consumer.write(MEDIA_VOLUME_DOWN); // CCW → ${ccw}`);
+      lines.push(`    }`);
+      lines.push(`  }`);
+      lines.push(`  enc${i}Last = enc${i}A;`);
+    });
+    lines.push(`}`);
+    lines.push(``);
+  }
+
+  // handlePots
+  if (pots.length) {
+    lines.push(`// ── Potentiometers ───────────────────────────────`);
+    lines.push(`void handlePots() {`);
+    pots.forEach((p,i) => {
+      if (p.props.intent) lines.push(`  // Intent: ${p.props.intent}`);
+      lines.push(`  int val${i} = analogRead(POT_${i}_PIN) >> 3; // 10-bit → 7-bit (0-127)`);
+      lines.push(`  if (abs(val${i} - pot${i}Last) > 1) {`);
+      if (p.props.action === 'volume') {
+        lines.push(`    // Map to system volume`);
+        lines.push(`    Consumer.write(val${i} > pot${i}Last ? MEDIA_VOLUME_UP : MEDIA_VOLUME_DOWN);`);
+      } else {
+        lines.push(`    // Use HID-Project MIDI CC or map as needed`);
+        lines.push(`    // midiCC(${p.props.ch||1}, ${p.props.cc||7}, val${i});`);
+      }
+      lines.push(`    pot${i}Last = val${i};`);
+      lines.push(`  }`);
+    });
+    lines.push(`}`);
+    lines.push(``);
+  }
+
+  // handleSwitches
+  if (sws.length) {
+    lines.push(`// ── Toggle Switches ──────────────────────────────`);
+    lines.push(`void handleSwitches() {`);
+    sws.forEach((s,i) => {
+      lines.push(`  if (digitalRead(SW_${i}_PIN) == LOW) { Keyboard.press('${s.props.onKey?.replace('KC_','').toLowerCase()||'f13'}'); }`);
+      lines.push(`  else { Keyboard.release('${s.props.onKey?.replace('KC_','').toLowerCase()||'f13'}'); }`);
+    });
+    lines.push(`}`);
+    lines.push(``);
+  }
+
+  // handleLEDs
+  if (leds.length) {
+    lines.push(`// ── LEDs ─────────────────────────────────────────`);
+    lines.push(`void handleLEDs() {`);
+    leds.forEach((_,i) => lines.push(`  digitalWrite(LED_${i}_PIN, HIGH); // adjust logic as needed`));
+    lines.push(`}`);
+    lines.push(``);
+  }
+
+  // handleOLED
+  if (oleds.length) {
+    lines.push(`// ── OLED ─────────────────────────────────────────`);
+    lines.push(`void handleOLED() {`);
+    oleds.forEach((o,i) => {
+      lines.push(`  display${i}.clearDisplay();`);
+      lines.push(`  display${i}.setTextSize(1); display${i}.setTextColor(WHITE);`);
+      lines.push(`  display${i}.setCursor(0, 0);`);
+      if (o.props.show === 'layer') lines.push(`  display${i}.print("LAYER: "); display${i}.println(currentLayer);`);
+      else lines.push(`  display${i}.println("PADFORGE");`);
+      lines.push(`  display${i}.display();`);
+    });
+    lines.push(`}`);
+    lines.push(``);
+  }
+
+  // Intents as comments block
+  const intents = getPlaced().filter(p => p.intent);
+  if (intents.length) {
+    lines.push(`// ── User Intent Notes ────────────────────────────`);
+    intents.forEach(p => lines.push(`// [${p.props.label}] ${p.intent}`));
+  }
+
+  return lines.join('\n');
+}
+
+// ── KMK / CircuitPython ───────────────────────────────────────────────────────
+function genKMK(mcu, tab) {
+  if (tab === 'pins')   return genPinsTab(mcu);
+  if (tab === 'readme') return genReadme(mcu, 'KMK / CircuitPython');
+  const items = getPlaced();
+  const keys  = items.filter(p => p.type === 'key');
+  const encs  = items.filter(p => p.type === 'enc');
+
+  const lines = [];
+  lines.push(`# ═══════════════════════════════════════════════════`);
+  lines.push(`# PADFORGE — KMK CircuitPython Firmware`);
+  lines.push(`# MCU: ${mcu.label}  |  Generated: ${new Date().toLocaleDateString()}`);
+  lines.push(`# ═══════════════════════════════════════════════════`);
+  lines.push(`import board`);
+  lines.push(`from kmk.kmk_keyboard import KMKKeyboard`);
+  lines.push(`from kmk.keys import KC`);
+  lines.push(`from kmk.scanners import KeysScanner`);
+  if (encs.length) lines.push(`from kmk.modules.encoder import EncoderHandler`);
+  lines.push(``);
+  lines.push(`keyboard = KMKKeyboard()`);
+  lines.push(``);
+  lines.push(`# Pin mapping`);
+  lines.push(`keyboard.col_pins = (${keys.map(k=>`board.${k.props.pin||'GP0'}`).join(', ')},)`);
+  lines.push(`keyboard.row_pins = (board.GP1,)  # adjust for your matrix`);
+  lines.push(`keyboard.diode_orientation = DiodeOrientation.COL2ROW`);
+  lines.push(``);
+  lines.push(`keyboard.keymap = [`);
+  lines.push(`    [${keys.map(k=>`KC.${(k.props.keycode||'A').replace('KC_','')}`).join(', ')}],`);
+  lines.push(`]`);
+  lines.push(``);
+  if (encs.length) {
+    lines.push(`encoder_handler = EncoderHandler()`);
+    lines.push(`keyboard.modules.append(encoder_handler)`);
+    encs.forEach((e,i) => {
+      lines.push(`encoder_handler.pins = ((board.${e.props.pinA||'GP2'}, board.${e.props.pinB||'GP3'}, board.${e.props.btnPin||'None'}, False),)`);
+      lines.push(`encoder_handler.map = [((KC.${(e.props.cwKey||'VOLU').replace('KC_','')}, KC.${(e.props.ccwKey||'VOLD').replace('KC_','')}, KC.MUTE),)]`);
+    });
+  }
+  lines.push(``);
+  lines.push(`if __name__ == '__main__':`);
+  lines.push(`    keyboard.go()`);
+  return lines.join('\n');
+}
+
+// ── QMK ───────────────────────────────────────────────────────────────────────
+function genQMK(mcu, tab) {
+  if (tab === 'pins')   return genPinsTab(mcu);
+  if (tab === 'readme') return genReadme(mcu, 'QMK Firmware');
+  const items = getPlaced();
+  const keys  = items.filter(p => p.type === 'key');
+  const encs  = items.filter(p => p.type === 'enc');
+
+  const lines = [];
+  lines.push(`// PADFORGE — QMK config.h + keymap.c`);
+  lines.push(`// MCU: ${mcu.label}  |  ${new Date().toLocaleDateString()}`);
+  lines.push(``);
+  lines.push(`// ── config.h ─────────────────────────────────────`);
+  lines.push(`#pragma once`);
+  lines.push(`#define MATRIX_ROWS 1`);
+  lines.push(`#define MATRIX_COLS ${Math.max(keys.length,1)}`);
+  lines.push(`#define MATRIX_ROW_PINS { ${mcu.pins[0]||'D0'} }`);
+  lines.push(`#define MATRIX_COL_PINS { ${keys.map(k=>k.props.pin||'/* pin */').join(', ')} }`);
+  lines.push(`#define DIODE_DIRECTION COL2ROW`);
+  if (encs.length) {
+    lines.push(`#define ENCODER_RESOLUTION 4`);
+    lines.push(`#define ENCODERS_PAD_A { ${encs.map(e=>e.props.pinA||'/* pinA */').join(', ')} }`);
+    lines.push(`#define ENCODERS_PAD_B { ${encs.map(e=>e.props.pinB||'/* pinB */').join(', ')} }`);
+  }
+  lines.push(``);
+  lines.push(`// ── keymap.c ─────────────────────────────────────`);
+  lines.push(`#include QMK_KEYBOARD_H`);
+  lines.push(`const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {`);
+  lines.push(`    [0] = LAYOUT(`);
+  lines.push(`        ${keys.map(k=>k.props.keycode||'KC_TRNS').join(', ')}`);
+  lines.push(`    ),`);
+  lines.push(`};`);
+  if (encs.length) {
+    lines.push(``);
+    lines.push(`bool encoder_update_user(uint8_t index, bool clockwise) {`);
+    encs.forEach((e,i) => {
+      lines.push(`    if (index == ${i}) {`);
+      lines.push(`        tap_code(clockwise ? ${e.props.cwKey||'KC_VOLU'} : ${e.props.ccwKey||'KC_VOLD'});`);
+      lines.push(`    }`);
+    });
+    lines.push(`    return false;`);
+    lines.push(`}`);
+  }
+  return lines.join('\n');
+}
+
+// ── ZMK ───────────────────────────────────────────────────────────────────────
+function genZMK(mcu, tab) {
+  if (tab === 'pins')   return genPinsTab(mcu);
+  if (tab === 'readme') return genReadme(mcu, 'ZMK Firmware');
+  const items = getPlaced();
+  const keys  = items.filter(p => p.type === 'key');
+  const lines = [];
+  lines.push(`// PADFORGE — ZMK Devicetree`);
+  lines.push(`// MCU: ${mcu.label}  |  ${new Date().toLocaleDateString()}`);
+  lines.push(``);
+  lines.push(`/ {`);
+  lines.push(`    chosen { zmk,kscan = &kscan0; };`);
+  lines.push(``);
+  lines.push(`    kscan0: kscan_0 {`);
+  lines.push(`        compatible = "zmk,kscan-gpio-direct";`);
+  lines.push(`        input-gpios`);
+  keys.forEach(k => lines.push(`            = <&gpio0 ${k.props.pin?.replace(/\D/g,'')||0} (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>`));
+  lines.push(`        ;`);
+  lines.push(`    };`);
+  lines.push(``);
+  lines.push(`    keymap { compatible = "zmk,keymap";`);
+  lines.push(`        default_layer { bindings = <`);
+  lines.push(`            ${keys.map(k=>`&kp ${k.props.keycode?.replace('KC_','')||'A'}`).join(' ')}`);
+  lines.push(`        >; };`);
+  lines.push(`    };`);
+  lines.push(`};`);
+  return lines.join('\n');
+}
+
+// ── Shared tabs ───────────────────────────────────────────────────────────────
+function genPinsTab(mcu) {
+  const lines = [];
+  lines.push(`// ── ${mcu.label} Pin Reference ──`);
+  lines.push(`// Total GPIO: ${mcu.gpios}`);
+  lines.push(`// HID Support: ${mcu.hid}`);
+  lines.push(``);
+  lines.push(`// All available pins:`);
+  mcu.pins.forEach((p,i) => lines.push(`//  [${String(i).padStart(2)}] ${p}${mcu.analog?.includes(p)?' (ADC)':''}`));
+  lines.push(``);
+  lines.push(`// Placed components:`);
+  Object.values(placed).forEach(p => {
+    const def = COMPS.find(c => c.type === p.type);
+    lines.push(`//  ${p.props.label||p.type} @ [${p.r},${p.c}] — ${def.cost} pin(s)`);
+    Object.entries(p.props).filter(([k])=>k.toLowerCase().includes('pin')).forEach(([k,v]) => {
+      if (v) lines.push(`//    ${k}: ${v}`);
+    });
+  });
+  return lines.join('\n');
+}
+
+function genReadme(mcu, fw) {
+  const items = getPlaced();
+  const lines = [];
+  lines.push(`# PADFORGE — Macropad Build Notes`);
+  lines.push(``);
+  lines.push(`**MCU:** ${mcu.label}  `);
+  lines.push(`**Firmware:** ${fw}  `);
+  lines.push(`**Grid:** ${cols} × ${rows}  `);
+  lines.push(`**Components:** ${items.length}  `);
+  lines.push(``);
+  lines.push(`## Components`);
+  items.forEach(p => {
+    const def = COMPS.find(c => c.type === p.type);
+    lines.push(`### [${p.r},${p.c}] ${p.props.label || def.name}`);
+    lines.push(`- Type: ${def.name}`);
+    lines.push(`- GPIO cost: ${def.cost}`);
+    Object.entries(p.props).forEach(([k,v]) => { if(v) lines.push(`- ${k}: \`${v}\``); });
+    if (p.intent) lines.push(`- **Intent:** ${p.intent}`);
+    lines.push(``);
+  });
+  lines.push(`## Wiring Notes`);
+  lines.push(`- All buttons use INPUT_PULLUP (connect between pin and GND)`);
+  lines.push(`- Encoders: A/B to digital pins, common to GND`);
+  lines.push(`- OLED: SDA/SCL to I2C pins, 3.3V power`);
+  lines.push(`- NeoPixels: Data pin + 5V + GND, 300-500Ω resistor on data line`);
+  return lines.join('\n');
+}
+
+// ══════════════════════════════════════
+// AI ENHANCE (Puter.js)
+// ══════════════════════════════════════
+async function aiEnhance() {
+  const btn = $('btn-ai');
+  const current = $('code-out').value;
+  if (!current.trim() || Object.keys(placed).length === 0) { toast('Add components first'); return; }
+
+  btn.disabled = true;
+  btn.classList.add('loading');
+  $('code-status').textContent = 'AI enhancing...';
+
+  // Collect intents
+  const intentNotes = Object.values(placed)
+    .filter(p => p.intent)
+    .map(p => `- [${p.props.label}]: ${p.intent}`)
+    .join('\n') || '(no specific intents provided)';
+
+  const prompt = `You are a firmware engineer. Here is auto-generated Arduino HID macropad code:
+
+\`\`\`cpp
+${current}
+\`\`\`
+
+User intent notes per component:
+${intentNotes}
+
+Improve this code by:
+1. Implementing the user's stated intents precisely
+2. Adding missing debounce logic, edge cases
+3. Fixing any obvious bugs
+4. Adding helpful inline comments
+
+Output ONLY the improved raw code, no markdown fences.`;
+
+  try {
+    const response = await puter.ai.chat(prompt, { model: 'gpt-4o' });
+    const code = response?.message?.content ?? response ?? '';
+    $('code-out').value = typeof code === 'string' ? code : JSON.stringify(code, null, 2);
+    $('code-status').textContent = 'AI enhanced ✓';
+    toast('AI enhancement done!');
+  } catch(e) {
+    $('code-status').textContent = 'AI error';
+    toast('AI error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+  }
+}
+
+// ══════════════════════════════════════
+// EVENTS
+// ══════════════════════════════════════
+$('mcu-sel').addEventListener('change', e => { selMCU = e.target.value; updateGPIO(); if(selKey)renderProps(); regen(); });
+$('fw-sel').addEventListener('change',  () => regen());
+$('btn-apply').addEventListener('click', () => {
+  cols = Math.max(1,Math.min(16,+$('inp-cols').value||4));
+  rows = Math.max(1,Math.min(10,+$('inp-rows').value||3));
+  Object.keys(placed).forEach(k => { const [r,c]=k.split(',').map(Number); if(r>=rows||c>=cols) delete placed[k]; });
+  deselect(); buildGrid();
+});
+$('btn-clear').addEventListener('click',  () => { placed={}; deselect(); buildGrid(); toast('Cleared'); });
+$('btn-clear2').addEventListener('click', () => { placed={}; deselect(); buildGrid(); toast('Cleared'); });
+$('btn-ai').addEventListener('click', aiEnhance);
+$('btn-copy').addEventListener('click', () => { navigator.clipboard.writeText($('code-out').value||'').then(()=>toast('Copied!')).catch(()=>toast('Copy failed')); });
+$('btn-dl').addEventListener('click',  () => {
+  const fw = $('fw-sel').value;
+  const ext = fw.includes('kmk') ? '.py' : fw === 'zmk' ? '.dts' : '.ino';
+  const a = document.createElement('a');
+  a.href = 'data:text/plain,' + encodeURIComponent($('code-out').value);
+  a.download = 'padforge_macropad' + ext;
+  a.click();
+});
+
+// Tabs
+document.querySelectorAll('.ctab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.ctab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    activeTab = tab.dataset.tab;
+    regen();
+  });
+});
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.key==='Escape') deselect();
+  if ((e.key==='Delete'||e.key==='Backspace') && selKey &&
+      !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
+    delete placed[selKey]; deselect(); buildGrid();
+  }
+});
+
+// Toast
+let toastT;
+function toast(m) {
+  const el=$('toast'); el.textContent=m; el.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),2000);
+}
+
+// ══════════════════════════════════════
+// MAIN TABS
+// ══════════════════════════════════════
+let activeMainTab = 'page-structure';
+
+document.querySelectorAll('.main-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    activeMainTab = tab.dataset.page;
+    document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.main-page').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(activeMainTab).classList.add('active');
+    if (activeMainTab === 'page-working') buildWorkingGrid();
+    if (activeMainTab === 'page-code') regen();
+  });
+});
+
+// ══════════════════════════════════════
+// WORKING PAGE — read-only grid + intent rows
+// ══════════════════════════════════════
+function buildWorkingGrid() {
+  // Read-only grid mirror
+  const g = document.getElementById('grid-w');
+  g.style.gridTemplateColumns = `repeat(${cols}, var(--cell))`;
+  g.style.gridTemplateRows    = `repeat(${rows}, var(--cell))`;
+  g.innerHTML = '';
+  const occ2 = occupiedSet();
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const key = `${r},${c}`;
+      const isOrigin = !!placed[key];
+      const isShadow = occ2.has(key) && !isOrigin;
+      if (isShadow) continue; // skip shadow cells — spanning tile covers them
+      const cell = document.createElement('div');
+      cell.className = 'cell' + (occ2.has(key) ? ' taken' : '');
+      cell.style.gridColumn = isOrigin ? `${c+1} / span ${COMPS.find(x=>x.type===placed[key].type)?.cw||1}` : `${c+1}`;
+      cell.style.gridRow    = isOrigin ? `${r+1} / span ${COMPS.find(x=>x.type===placed[key].type)?.rh||1}` : `${r+1}`;
+      if (isOrigin) {
+        const p = placed[key];
+        const def = COMPS.find(x => x.type === p.type);
+        const iconSize = Math.min(22 + ((def.cw||1)+(def.rh||1)-2)*8, 48);
+        const iconSvg = def.svg.replace(/width="22" height="22"/g,`width="${iconSize}" height="${iconSize}"`);
+        const wrap = document.createElement('div');
+        wrap.className = 'pc';
+        wrap.style.background = def.col + 'aa';
+        wrap.style.border = `1.5px solid ${def.col}`;
+        wrap.style.color  = def.svgCol;
+        wrap.innerHTML = `${iconSvg}<div class="pc-lbl">${p.props.label||def.name}</div>`;
+        cell.appendChild(wrap);
+      }
+      g.appendChild(cell);
+    }
+  }
+
+  // Intent rows
+  const rows_el = document.getElementById('intent-rows');
+  rows_el.innerHTML = '';
+  const items = Object.values(placed);
+  if (!items.length) {
+    rows_el.innerHTML = `<div style="padding:16px 14px;font-size:10px;color:var(--tx3);">No components placed yet. Go to Structure tab to add components.</div>`;
+    return;
+  }
+  items.forEach(p => {
+    const def = COMPS.find(c => c.type === p.type);
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;border-bottom:1px solid var(--bdr);min-height:40px;';
+    // icon tile
+    const tile = document.createElement('div');
+    tile.style.cssText = `width:40px;height:40px;background:${def.col};flex-shrink:0;display:flex;align-items:center;justify-content:center;color:${def.svgCol};`;
+    tile.innerHTML = def.svg;
+    // label
+    const meta = document.createElement('div');
+    meta.style.cssText = 'padding:0 12px;min-width:130px;flex-shrink:0;border-right:1px solid var(--bdr);height:40px;display:flex;flex-direction:column;justify-content:center;';
+    meta.innerHTML = `<div style="font-size:10px;font-weight:500;color:var(--tx);">${p.props.label||def.name}</div><div style="font-size:9px;color:var(--tx3);">${def.name} · [${p.r},${p.c}]</div>`;
+    // intent input
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.placeholder = 'What should this do? e.g. Volume up on rotate…';
+    inp.value = p.intent || '';
+    inp.style.cssText = 'flex:1;background:transparent;border:none;outline:none;font-family:var(--f);font-size:11px;color:var(--tx);padding:0 14px;height:40px;';
+    inp.addEventListener('input', e => { p.intent = e.target.value; });
+    row.appendChild(tile); row.appendChild(meta); row.appendChild(inp);
+    rows_el.appendChild(row);
+  });
+}
+
+buildPalette();
+
+// Demo 5×3 grid — OLED 128×64 occupies 2×2 cells at [1,3]
+cols = 5; rows = 3;
+$('inp-cols').value = cols;
+$('inp-rows').value = rows;
+
+const demo = [
+  {type:'key',  r:0,c:0, props:{...COMPS[0].defaults,label:'COPY', pin:'D2', keycode:'KC_C'}, intent:'Copy selected text'},
+  {type:'key',  r:0,c:1, props:{...COMPS[0].defaults,label:'PASTE',pin:'D3', keycode:'KC_V'}, intent:'Paste clipboard'},
+  {type:'key',  r:0,c:2, props:{...COMPS[0].defaults,label:'UNDO', pin:'D4', keycode:'KC_Z'}, intent:'Undo last action'},
+  {type:'enc',  r:0,c:3, props:{...COMPS[1].defaults,label:'VOL',  pinA:'D5',pinB:'D6'}, intent:'Volume up/down, mute on click'},
+  {type:'key',  r:0,c:4, props:{...COMPS[0].defaults,label:'SAVE', pin:'D7', keycode:'KC_S'}, intent:'Save file'},
+  {type:'key',  r:1,c:0, props:{...COMPS[0].defaults,label:'SNIP', pin:'B0', keycode:'KC_F13'}, intent:'Open snipping tool'},
+  {type:'key',  r:2,c:0, props:{...COMPS[0].defaults,label:'LOCK', pin:'B4', keycode:'KC_LGUI'}, intent:'Lock screen'},
+  {type:'rgb',  r:2,c:1, props:{...COMPS[4].defaults,label:'RGB',  pin:'B1', count:'6',effect:'rainbow'}},
+  {type:'key',  r:2,c:2, props:{...COMPS[0].defaults,label:'CALC', pin:'B2', keycode:'KC_F14'}, intent:'Open calculator'},
+  // OLED 128×64 = 2×2 cells at [1,3] spans to [2,4]
+  {type:'oled', r:1,c:3, props:{...COMPS[5].defaults,label:'DISP', sda:'C6', scl:'C7'}, intent:'Show layer and WPM'},
+  {type:'key',  r:1,c:1, props:{...COMPS[0].defaults,label:'TERM', pin:'B3', keycode:'KC_F15'}, intent:'Open terminal'},
+  {type:'key',  r:1,c:2, props:{...COMPS[0].defaults,label:'TAB',  pin:'B5', keycode:'KC_TAB'},  intent:'Switch windows'},
+];
+demo.forEach(d => { placed[`${d.r},${d.c}`] = {...d, id:++uid}; });
+buildGrid();
+
+</script>
+</body>
+</html>
