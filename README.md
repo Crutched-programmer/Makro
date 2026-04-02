@@ -1,7 +1,6 @@
 # MAKRO-The simple drag and drop interface for building macropads
 
-> Metro UI-styled macropad firmware builder with physically accurate grid sizing and HID key generation for Arduino Leonardo and compatible boards.
-{ Watch the demo video for a better understanding of the process of generating the code. }
+> A simple drag and drop interface for building macropad firmware for Arduino and other boards with build in USB capabilities ( HID ){ Watch the demo video for a better understanding of the process of generating the code. }
 
 ## The Problem It Solves
 
