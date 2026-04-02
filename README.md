@@ -16,16 +16,15 @@ Building custom macropad firmware requires juggling Arduino IDE, C++ code, and H
 * Support for standard HID keycodes and macro sequences
 * Customizable grid dimensions (1x1 up to 12x12)
 * Export-ready firmware with proper USB descriptor handling
-* Metro accent color picker for UI customization
 * No external JavaScript frameworks—vanilla HTML/CSS/JS
+* Very simple UI with different tabs/sections for different parts of the firmware building process.
 
 ## Tech Stack
 
 * HTML5 / CSS3 (Metro UI design system)
 * Vanilla JavaScript (no frameworks)
 * Python 3.7+ (code generation backend)
-* Arduino C++ (generated firmware)
-* USB HID protocol (Leonardo native)
+* Arduino C++ (generated firmware) (the code language would be different depending on the selected MCU)
 
 ## Requirements
 
@@ -190,20 +189,17 @@ const uint8_t keymap[2][2] PROGMEM = {
 * Mouse movement and scroll wheel support
 * OLED display integration for status/labels
 * Wireless BLE variant using nRF52 boards
-* Live USB testing in designer (requires browser USB API)
-* Dark mode toggle in designer UI
-* Import/export standard QMK configs
-* 3D printable case generator with button cavity calculations
+* Live USB testing in designer (requires browser USB API) 
+* 3D printable case generator with button cavity calculations (like in app-musiconerd.com)
+* QMK support will be added in later versions.
 
 ## Notes
 
-* Generated firmware is ~2KB (fits easily in Leonardo's 32KB flash)
+* Generated firmware is ~2KB (under most cases with switched only. encoders and OLEDs would add extra load )
 * Button debounce delay: 20ms (adjustable in firmware template)
 * USB polling rate: 1000Hz (standard for HID keyboards)
 * First flash requires manual Arduino IDE upload; subsequent updates via custom bootloader possible
-* Keep config JSON version-controlled separately from firmware
 * Test all keycodes before final flash (typos can cause unintended key sends)
-* Metro UI chosen for modern, flat aesthetic and pixel-perfect grid alignment
 
 ## Architecture Diagram
 
@@ -222,20 +218,21 @@ const uint8_t keymap[2][2] PROGMEM = {
     + Button Spacing      │
          │                │
          │          ┌─────┴──────┐
-         │          │            │
-         │       Firmware Code    HTML Export
-         │       (Arduino C++)    (Standalone)
-         │          │            │
-         │      HID Reports    Visual Preview
-         │      Matrix Scan    For Documentation
+         │          │                    │
+         │       Firmware Code        HTML Export
+         │       (Arduino C++)       (Standalone)
+         |          (default)
+         │          │                     │
+         │      HID Reports         Visual Preview
+         │      Matrix Scan        For Documentation
          │      Pin Config
          │
     ┌────┴─────────────┐
-    │ Arduino Leonardo │
-    │ (ATmega32U4)     │
-    │ - USB HID        │
-    │ - Button Matrix  │
-    │ - LED Feedback   │
+    │ Arduino Leonardo             │
+    │ (ATmega32U4)                 │
+    │ - USB HID                    │
+    │ - Button Matrix              │
+    │ - LED Feedback               │
     └──────────────────┘
 ```
 <p>Please note that this project is done with inspiration from app.musiconerd.com . This is is a drag and drop interface for building a MIDI controller. I took up this project as a simple challenge. I have no intentions to replicate or reproduce the interface.</p>
