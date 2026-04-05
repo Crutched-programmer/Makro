@@ -2,6 +2,8 @@
 
 > A simple drag and drop interface for building macropad firmware for Arduino and other boards with build in USB capabilities ( HID ){ Watch the demo video for a better understanding of the process of generating the code. }
 
+<img src='https://github.com/user-attachments/assets/6abf9b11-66ad-4998-aaec-ccf372475399' />
+
 ## The Problem It Solves
 
 Building custom macropad firmware requires juggling Arduino IDE, C++ code, and HID reports. MAKRO streamlines this by providing a visual grid designer with Metro UI aesthetics that generates production-ready Arduino sketches. Define your keymap in a clean JSON config, get perfectly sized HTML preview, and auto-generate the firmware code—no manual C++ plumbing required.
