@@ -2,8 +2,9 @@
 
 > A simple drag and drop interface for building macropad firmware for Arduino and other boards with build in USB capabilities ( HID ){ Watch the demo video for a better understanding of the process of generating the code. }
 
-<img src='https://github.com/user-attachments/assets/6abf9b11-66ad-4998-aaec-ccf372475399' />
-*This is a highly compressed and sped up GIF file for representation purposes only, it is better to watch the Demo-Video.mp4 file.
+<img src='https://github.com/user-attachments/assets/6abf9b11-66ad-4998-aaec-ccf372475399' /><br>
+
+*This is a highly compressed and sped up GIF file for representation purposes only, it is better to watch the Demo-Video.mp4 file.*
 
 ## The Problem It Solves
 
