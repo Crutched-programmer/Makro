@@ -1,4 +1,4 @@
-# MAKRO-The simple drag and drop interface for building macropads
+# MAKRO MK 2.0.0
 
 > A simple drag and drop interface for building macropad firmware for Arduino and other boards with build in USB capabilities ( HID ){ Watch the demo video for a better understanding of the process of generating the code. }
 
